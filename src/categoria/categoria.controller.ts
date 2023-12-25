@@ -1,0 +1,73 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  Logger,
+  HttpCode,
+} from '@nestjs/common'
+import { CategoriaService } from './categoria.service'
+import { CreateCategoriaDto } from './dto/create-categoria.dto'
+import { UpdateCategoriaDto } from './dto/update-categoria.dto'
+import { CategoriaMapper } from './mapper/categoria.mapper'
+
+@Controller('categoria')
+export class CategoriaController {
+  private readonly logger: Logger = new Logger(CategoriaController.name)
+  constructor(
+    private readonly categoriaService: CategoriaService,
+    private readonly categoriaMapper: CategoriaMapper,
+  ) {}
+
+  @Post()
+  @HttpCode(201)
+  async create(@Body() createCategoriaDto: CreateCategoriaDto) {
+    this.logger.log(`Creando Categoria: ${JSON.stringify(createCategoriaDto)}`)
+    return this.categoriaMapper.mapResponse(
+      await this.categoriaService.create(createCategoriaDto),
+    )
+  }
+
+  @Get()
+  async findAll() {
+    this.logger.log('Obteniendo todas las categorias')
+    return await this.categoriaService
+      .findAll()
+      .then((all) => all.map((cate) => this.categoriaMapper.mapResponse(cate)))
+  }
+
+  @Get(':id')
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    this.logger.log(`Obteniendo Categoria: ${id}`)
+    return this.categoriaMapper.mapResponse(
+      await this.categoriaService.findOne(id),
+    )
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateCategoriaDto: UpdateCategoriaDto,
+  ) {
+    this.logger.log(`Actualizando Categoria: ${id}`)
+    return this.categoriaService.update(id, updateCategoriaDto)
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    this.logger.log(`Eliminando Categoria: ${id}`)
+    return this.categoriaService.remove(id)
+  }
+
+  @Delete('all')
+  @HttpCode(204)
+  removeAll() {
+    this.logger.log('Eliminando todas las categorias')
+    return this.categoriaService.removeAll()
+  }
+}
