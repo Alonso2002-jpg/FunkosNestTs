@@ -3,51 +3,71 @@ import { CreateFunkoDto } from './dto/create-funko.dto'
 import { UpdateFunkoDto } from './dto/update-funko.dto'
 import { Funko } from './entities/funko.entity'
 import { FunkosMapper } from './mapper/funkos.mapper'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Categoria } from '../categoria/entities/categoria.entity'
+import { Repository } from 'typeorm'
 
 @Injectable()
 export class FunkosService {
-  funkos: Funko[] = []
   private readonly logger: Logger = new Logger(FunkosService.name)
-  constructor(private readonly funkosMapper: FunkosMapper) {}
-  create(createFunkoDto: CreateFunkoDto) {
-    const funkosave = this.funkosMapper.mapFunko(createFunkoDto)
-    this.funkos.push(funkosave)
-    return this.funkosMapper.mapResponse(funkosave)
+  constructor(
+    private readonly funkosMapper: FunkosMapper,
+    @InjectRepository(Funko)
+    private readonly funkoRepository: Repository<Funko>,
+    @InjectRepository(Categoria)
+    private readonly categoriaRepository: Repository<Categoria>,
+  ) {
+    this.funkoRepository.delete({})
+  }
+  async create(createFunkoDto: CreateFunkoDto) {
+    const category = await this.findCategory(createFunkoDto.category)
+    this.logger.log(category.nombreCategoria)
+    const funkosave = this.funkosMapper.mapFunko(createFunkoDto, category)
+    return await this.funkoRepository.save(funkosave)
   }
 
   async findAll() {
-    return this.funkosMapper.mapResponseList(this.funkos)
+    const funkos = await this.funkoRepository.find({ relations: ['category'] })
+    funkos.forEach((fk) => this.logger.log(`Funko: ${fk.category}`))
+    return funkos
   }
 
   async findOne(id: number) {
-    const index = this.funkos.findIndex((f) => f.id === id)
-    if (index === -1) {
-      throw new NotFoundException(`Funko no encontrado con id:${id}`)
+    const funkoFind = await this.funkoRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    })
+    if (!funkoFind) {
+      throw new NotFoundException(`Funko con ID ${id} no encontrado`)
     }
-    return this.funkosMapper.mapResponse(this.funkos[index])
+    return funkoFind
   }
 
   async update(id: number, updateFunkoDto: UpdateFunkoDto) {
-    const index = this.funkos.findIndex((f) => f.id == id)
-    if (index !== -1) {
-      this.funkos[index] = this.funkosMapper.mapFunkoUpd(
+    const funkoFind = await this.findOne(id)
+    return await this.funkoRepository.save(
+      this.funkosMapper.mapFunkoUpd(
         updateFunkoDto,
-        this.funkos[index],
-      )
-      return this.funkosMapper.mapResponse(this.funkos[index])
-    } else {
-      throw new NotFoundException(`Funko no encontrado con id:${id}`)
-    }
+        funkoFind,
+        updateFunkoDto.category
+          ? await this.findCategory(updateFunkoDto.category)
+          : undefined,
+      ),
+    )
   }
 
   async remove(id: number) {
-    const index = this.funkos.findIndex((f) => f.id == id)
-    if (index !== -1) {
-      const funkDel = this.funkos[index]
-      this.funkos.splice(index, 1)
-      return this.funkosMapper.mapResponse(funkDel)
-    } else {
-      throw new NotFoundException(`Funko no encontrado con id:${id}`)
+    await this.findOne(id)
+    return await this.funkoRepository.delete({ id })
+  }
+
+  async findCategory(name: string) {
+    const category = await this.categoriaRepository.findOneBy({
+      nombreCategoria: name,
+    })
+    if (!category) {
+      throw new NotFoundException(`Categoria no encontrada con nombre ${name}`)
     }
+    return category
   }
 }
