@@ -63,11 +63,4 @@ export class CategoriaController {
     this.logger.log(`Eliminando Categoria: ${id}`)
     return this.categoriaService.remove(id)
   }
-
-  @Delete('all')
-  @HttpCode(204)
-  removeAll() {
-    this.logger.log('Eliminando todas las categorias')
-    return this.categoriaService.removeAll()
-  }
 }

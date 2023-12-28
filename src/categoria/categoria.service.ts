@@ -10,12 +10,15 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { CategoriaMapper } from './mapper/categoria.mapper'
 import { v4 as uuidv4 } from 'uuid'
+import { Funko } from '../funkos/entities/funko.entity'
 
 @Injectable()
 export class CategoriaService {
   constructor(
     @InjectRepository(Categoria)
     private readonly categoriaRepository: Repository<Categoria>,
+    @InjectRepository(Funko)
+    private readonly funkoRepository: Repository<Funko>,
     private readonly categoriaMapper: CategoriaMapper,
   ) {}
   async create(createCategoriaDto: CreateCategoriaDto) {
@@ -36,11 +39,11 @@ export class CategoriaService {
   }
 
   async findOne(id: string) {
-    const cateFind = this.categoriaRepository.findOneBy({ id })
+    const cateFind = await this.categoriaRepository.findOneBy({ id })
     if (!cateFind) {
       throw new NotFoundException(`Categoria con ID ${id} no encontrada`)
     }
-    return await cateFind
+    return cateFind
   }
 
   async update(id: string, updateCategoriaDto: UpdateCategoriaDto) {
@@ -51,11 +54,21 @@ export class CategoriaService {
   }
 
   async remove(id: string) {
-    await this.findOne(id)
-    return await this.categoriaRepository.delete({ id })
+    const cateFind = await this.findOne(id)
+    const listFunk = await this.funkoRepository.findBy({ category: cateFind })
+    if (!listFunk) {
+      return await this.categoriaRepository.delete({ id })
+    }
+    return await this.removeSoft(id)
   }
 
-  async removeAll() {
-    return await this.categoriaRepository.delete({})
+  async removeSoft(id: string) {
+    const cateFind = await this.findOne(id)
+    const cateRem: Categoria = {
+      ...cateFind,
+      updatedAt: new Date(),
+      isDeleted: true,
+    }
+    return await this.categoriaRepository.save(cateRem)
   }
 }
