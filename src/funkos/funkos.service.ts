@@ -21,7 +21,6 @@ export class FunkosService {
   }
   async create(createFunkoDto: CreateFunkoDto) {
     const category = await this.findCategory(createFunkoDto.category)
-    this.logger.log(category.nombreCategoria)
     const funkosave = this.funkosMapper.mapFunko(createFunkoDto, category)
     return await this.funkoRepository.save(funkosave)
   }
