@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Logger,
   HttpCode,
+  Put,
 } from '@nestjs/common'
 import { CategoriaService } from './categoria.service'
 import { CreateCategoriaDto } from './dto/create-categoria.dto'
@@ -48,13 +49,15 @@ export class CategoriaController {
     )
   }
 
-  @Patch(':id')
-  update(
+  @Put(':id')
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCategoriaDto: UpdateCategoriaDto,
   ) {
     this.logger.log(`Actualizando Categoria: ${id}`)
-    return this.categoriaService.update(id, updateCategoriaDto)
+    return this.categoriaMapper.mapResponse(
+      await this.categoriaService.update(id, updateCategoriaDto),
+    )
   }
 
   @Delete(':id')

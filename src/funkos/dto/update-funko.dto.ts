@@ -34,7 +34,7 @@ export class UpdateFunkoDto extends PartialType(CreateFunkoDto) {
   @Max(10000, {
     message: 'La cantidad del Funko debe ser menor o igual a 10000',
   })
-  quantity: number
+  quantity?: number
   @IsOptional()
   category?: string
 }

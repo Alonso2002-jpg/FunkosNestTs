@@ -16,9 +16,7 @@ export class FunkosService {
     private readonly funkoRepository: Repository<Funko>,
     @InjectRepository(Categoria)
     private readonly categoriaRepository: Repository<Categoria>,
-  ) {
-    this.funkoRepository.delete({})
-  }
+  ) {}
   async create(createFunkoDto: CreateFunkoDto) {
     const category = await this.findCategory(createFunkoDto.category)
     const funkosave = this.funkosMapper.mapFunko(createFunkoDto, category)
