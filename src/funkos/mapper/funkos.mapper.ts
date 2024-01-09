@@ -45,6 +45,7 @@ export class FunkosMapper {
     response.name = funko.name
     response.price = funko.price
     response.category = funko.category.nombreCategoria
+    response.img = funko.img
     response.quantity = funko.quantity
     response.isDeleted = funko.isDeleted
     return response

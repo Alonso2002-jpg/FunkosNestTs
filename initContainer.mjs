@@ -1,7 +1,7 @@
 import { exec } from 'node:child_process'
 const reiniciarContenedor = () => {
   exec(
-    'docker stop funkos-db_postgres && docker rm funkos-db_postgres',
+    'docker stop funkos-db_postgres && docker rm -v funkos-db_postgres',
     (error, stdout) => {
       if (error) {
         console.error(`Error al detener o eliminar el contenedor: ${error}`)

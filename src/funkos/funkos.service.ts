@@ -60,7 +60,7 @@ export class FunkosService {
 
   async findCategory(name: string) {
     const category = await this.categoriaRepository.findOneBy({
-      nombreCategoria: name,
+      nombreCategoria: name.toUpperCase(),
     })
     if (!category) {
       throw new NotFoundException(`Categoria no encontrada con nombre ${name}`)

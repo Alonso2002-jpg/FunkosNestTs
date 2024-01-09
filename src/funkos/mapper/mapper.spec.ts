@@ -23,6 +23,7 @@ describe('Mapper', () => {
     name: 'test',
     price: 10,
     quantity: 10,
+    img: 'https://via.placeholder.com/150',
     category: category,
     createdAt: new Date(),
     updatedAt: new Date(),

@@ -31,6 +31,7 @@ export class CreateFunkoDto {
     message: 'La cantidad del Funko debe ser menor o igual a 10000',
   })
   quantity: number
+  @Transform((category) => category?.value.trim().toUpperCase())
   @IsNotEmpty({ message: 'La categoria del Funko es requerida' })
   category: string
   @IsBoolean({ message: 'El estado del Funko debe ser un booleano' })

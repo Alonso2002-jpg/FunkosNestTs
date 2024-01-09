@@ -11,6 +11,7 @@ import {
 
 @Entity('funko')
 export class Funko {
+  public static IMG_DEFAULT = 'https://via.placeholder.com/150'
   @PrimaryGeneratedColumn()
   id: number
   @Column('varchar', {
@@ -24,6 +25,8 @@ export class Funko {
   price?: number
   @Column('integer', { nullable: false, unique: false, name: 'quantity' })
   quantity: number
+  @Column('varchar',{nullable: false, unique: false, default: Funko.IMG_DEFAULT })
+  img: string
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamp',
