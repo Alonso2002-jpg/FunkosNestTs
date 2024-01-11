@@ -2,12 +2,17 @@ import { Module } from '@nestjs/common'
 import { FunkosModule } from './funkos/funkos.module'
 import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { CategoriaModule } from './categoria/categoria.module';
+import { CategoriaModule } from './categoria/categoria.module'
+import { StorageModule } from './storage/storage.module'
+import { NotificationGateway } from './websockets/notification/notification.gateway'
+import { CacheModule } from '@nestjs/cache-manager'
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     FunkosModule,
+    CategoriaModule,
+    StorageModule,
     // Configuración de la conexión a la base de datos a PostgreSQL
     TypeOrmModule.forRoot({
       type: 'postgres', // Tipo de base de datos
@@ -19,9 +24,9 @@ import { CategoriaModule } from './categoria/categoria.module';
       entities: [`${__dirname}/**/*.entity{.ts,.js}`], // Entidades de la base de datos (buscar archivos con extensión .entity.ts o .entity.js)
       synchronize: true, // Sincronizar la base de datos
     }),
-    CategoriaModule,
+    CacheModule.register(),
   ],
   controllers: [],
-  providers: [],
+  providers: [NotificationGateway, NotificationGateway],
 })
 export class AppModule {}

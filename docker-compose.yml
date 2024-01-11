@@ -13,9 +13,15 @@ services:
       POSTGRES_DB: ${POSTGRES_DATABASE}
     ports:
       - ${POSTGRES_PORT}:5432
+    volumes:
+      - funkos-db-data:/var/lib/postgresql/data
+      - ./database/funkos.sql:/docker-entrypoint-initdb.d/funkos.sql
     networks:
       - funkos-network
 
 networks:
   funkos-network:
     driver: bridge
+
+volumes:
+  funkos-db-data:

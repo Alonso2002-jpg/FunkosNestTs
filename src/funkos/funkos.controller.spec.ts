@@ -13,10 +13,20 @@ import { ResponseFunkoDto } from './dto/response-funko.dto'
 import { Repository } from 'typeorm'
 import { CreateFunkoDto } from './dto/create-funko.dto'
 import { UpdateFunkoDto } from './dto/update-funko.dto'
+import { CacheModule } from '@nestjs/cache-manager'
+import { StorageService } from '../storage/storage.service'
+import { NotificationGateway } from '../websockets/notification/notification.gateway'
 
 describe('FunkosController', () => {
   let postgresContainer: StartedPostgreSqlContainer
   let controller: FunkosController
+  let notificationGateway: NotificationGateway
+  let repository: Repository<Funko>
+  let cateRepository: Repository<Categoria>
+
+  const notiMock = {
+    sendMessage: jest.fn(),
+  }
 
   const category: Categoria = {
     id: '14c56c95-1cbf-4c65-a0c3-025899d2e2d1',
@@ -32,6 +42,7 @@ describe('FunkosController', () => {
     name: 'test',
     price: 100,
     category,
+    img: Funko.IMG_DEFAULT,
     quantity: 10,
     isDeleted: false,
     createdAt: new Date(),
@@ -53,16 +64,23 @@ describe('FunkosController', () => {
           synchronize: true, // Sincronizar la base de datos
         }),
         TypeOrmModule.forFeature([Funko, Categoria]),
+        CacheModule.register(),
       ],
       controllers: [FunkosController],
-      providers: [FunkosService, FunkosMapper],
+      providers: [
+        FunkosService,
+        FunkosMapper,
+        StorageService,
+        { provide: NotificationGateway, useValue: notiMock },
+      ],
     }).compile()
 
     controller = module.get<FunkosController>(FunkosController)
-    const repository = module.get<Repository<Funko>>(getRepositoryToken(Funko))
-    const cateRepository = module.get<Repository<Categoria>>(
+    repository = module.get<Repository<Funko>>(getRepositoryToken(Funko))
+    cateRepository = module.get<Repository<Categoria>>(
       getRepositoryToken(Categoria),
     )
+    notificationGateway = module.get<NotificationGateway>(NotificationGateway)
     await cateRepository.save(category)
     await repository.save(funkoTest)
   })
@@ -105,6 +123,8 @@ describe('FunkosController', () => {
         category: 'test',
         quantity: 10,
       }
+      jest.spyOn(notificationGateway, 'sendMessage').mockReturnValue()
+
       const funko = await controller.create(createFunkoDto)
       expect(funko.category).toEqual(category.nombreCategoria)
       expect(funko.name).toEqual(createFunkoDto.name)
@@ -174,6 +194,16 @@ describe('FunkosController', () => {
         'message',
         'Funko con ID 0 no encontrado',
       )
+    })
+  })
+
+  describe('updateImage', () => {
+    it('should update a funk image', async () => {
+      await repository.save(funkoTest)
+      const mockFile = {} as Express.Multer.File
+      jest.spyOn(notificationGateway, 'sendMessage').mockReturnValue()
+      const res = await controller.updateImg(2, mockFile)
+      expect(res).toBeInstanceOf(ResponseFunkoDto)
     })
   })
 })

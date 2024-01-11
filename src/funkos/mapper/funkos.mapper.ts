@@ -4,12 +4,12 @@ import { CreateFunkoDto } from '../dto/create-funko.dto'
 import { UpdateFunkoDto } from '../dto/update-funko.dto'
 import { ResponseFunkoDto } from '../dto/response-funko.dto'
 import { Categoria } from '../../categoria/entities/categoria.entity'
+import { StorageService } from '../../storage/storage.service'
 @Injectable()
 export class FunkosMapper {
-  id: number = 1
+  constructor(private readonly storageService: StorageService) {}
   mapFunko = (createDto: CreateFunkoDto, category: Categoria): Funko => {
     const funko = new Funko()
-    funko.id = this.id
     funko.name = createDto.name
     funko.price = createDto.price
     funko.category = category
@@ -17,7 +17,6 @@ export class FunkosMapper {
     funko.isDeleted = createDto.isDeleted || false
     funko.createdAt = new Date()
     funko.updatedAt = new Date()
-    this.id++
     return funko
   }
 
@@ -45,7 +44,10 @@ export class FunkosMapper {
     response.name = funko.name
     response.price = funko.price
     response.category = funko.category.nombreCategoria
-    response.img = funko.img
+    response.img =
+      funko.img === Funko.IMG_DEFAULT
+        ? funko.img
+        : this.storageService.generateUrl(funko.img)
     response.quantity = funko.quantity
     response.isDeleted = funko.isDeleted
     return response

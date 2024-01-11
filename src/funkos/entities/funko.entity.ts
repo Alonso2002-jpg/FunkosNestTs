@@ -25,7 +25,11 @@ export class Funko {
   price?: number
   @Column('integer', { nullable: false, unique: false, name: 'quantity' })
   quantity: number
-  @Column('varchar',{nullable: false, unique: false, default: Funko.IMG_DEFAULT })
+  @Column('varchar', {
+    nullable: false,
+    unique: false,
+    default: Funko.IMG_DEFAULT,
+  })
   img: string
   @CreateDateColumn({
     name: 'created_at',

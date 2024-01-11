@@ -7,6 +7,9 @@ import { Repository } from 'typeorm'
 import { Funko } from './entities/funko.entity'
 import { Categoria } from '../categoria/entities/categoria.entity'
 import { UpdateFunkoDto } from './dto/update-funko.dto'
+import { StorageService } from '../storage/storage.service'
+import { NotificationGateway } from '../websockets/notification/notification.gateway'
+import { CacheModule } from '@nestjs/cache-manager'
 
 describe('FunkosService', () => {
   let postgresContainer
@@ -14,13 +17,17 @@ describe('FunkosService', () => {
   let cateRepository
   let service: FunkosService
 
+  const funkosNoti = {
+    sendMessage: jest.fn(),
+  }
   const funkosMapper = {
     mapFunko: jest.fn(),
     mapFunkoUpd: jest.fn(),
+    mapResponse: jest.fn(),
   }
   const category: Categoria = {
     id: '14c56c95-1cbf-4c65-a0c3-025899d2e2d1',
-    nombreCategoria: 'test',
+    nombreCategoria: 'test2',
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -33,6 +40,7 @@ describe('FunkosService', () => {
     price: 100,
     category,
     quantity: 10,
+    img: Funko.IMG_DEFAULT,
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -52,9 +60,12 @@ describe('FunkosService', () => {
           synchronize: true, // Sincronizar la base de datos
         }),
         TypeOrmModule.forFeature([Funko, Categoria]),
+        CacheModule.register(),
       ],
       providers: [
         FunkosService,
+        StorageService,
+        { provide: NotificationGateway, useValue: funkosNoti },
         { provide: FunkosMapper, useValue: funkosMapper },
       ],
     }).compile()
@@ -105,7 +116,7 @@ describe('FunkosService', () => {
       const createFunkoDto = {
         name: 'test',
         price: 100,
-        category: 'test',
+        category: 'test2',
         quantity: 10,
       }
       jest.spyOn(funkosMapper, 'mapFunko').mockReturnValue(funkoTest)
@@ -136,6 +147,7 @@ describe('FunkosService', () => {
       }
 
       jest.spyOn(funkosMapper, 'mapFunkoUpd').mockReturnValue(funkoTest)
+      jest.spyOn(funkosMapper, 'mapResponse').mockReturnValue(funkoTest)
 
       const funko = await service.update(1, updateFunkoDto)
       expect(funko.category.nombreCategoria).toEqual(category.nombreCategoria)

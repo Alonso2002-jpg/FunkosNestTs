@@ -9,13 +9,16 @@ import {
   Logger,
   HttpCode,
   Put,
+  UseInterceptors,
 } from '@nestjs/common'
 import { CategoriaService } from './categoria.service'
 import { CreateCategoriaDto } from './dto/create-categoria.dto'
 import { UpdateCategoriaDto } from './dto/update-categoria.dto'
 import { CategoriaMapper } from './mapper/categoria.mapper'
+import { CacheInterceptor } from '@nestjs/cache-manager'
 
 @Controller('categoria')
+@UseInterceptors(CacheInterceptor)
 export class CategoriaController {
   private readonly logger: Logger = new Logger(CategoriaController.name)
   constructor(
