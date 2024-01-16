@@ -16,6 +16,7 @@ import { CreateCategoriaDto } from './dto/create-categoria.dto'
 import { UpdateCategoriaDto } from './dto/update-categoria.dto'
 import { CategoriaMapper } from './mapper/categoria.mapper'
 import { CacheInterceptor } from '@nestjs/cache-manager'
+import { Paginate, PaginateQuery } from 'nestjs-paginate'
 
 @Controller('categoria')
 @UseInterceptors(CacheInterceptor)
@@ -36,11 +37,9 @@ export class CategoriaController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Paginate() query: PaginateQuery) {
     this.logger.log('Obteniendo todas las categorias')
-    return await this.categoriaService
-      .findAll()
-      .then((all) => all.map((cate) => this.categoriaMapper.mapResponse(cate)))
+    return await this.categoriaService.findAllPag(query)
   }
 
   @Get(':id')

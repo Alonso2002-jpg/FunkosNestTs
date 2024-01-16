@@ -21,6 +21,13 @@ import {
 import { ResponseCategoriaDto } from './dto/response-categoria.dto'
 import { Cache } from 'cache-manager'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import {
+  FilterOperator,
+  FilterSuffix,
+  paginate,
+  PaginateQuery,
+} from 'nestjs-paginate'
+import { PaginationResponse } from '../pagination/pagination-response'
 
 @Injectable()
 export class CategoriaService {
@@ -50,6 +57,45 @@ export class CategoriaService {
     return cateReturn
   }
 
+  async findAllPag(query: PaginateQuery) {
+    this.logger.log('Mostrando las Categorias Paginadas')
+
+    const cache = await this.cacheManager.get(
+      `all_categories_paginated_${JSON.stringify(query)}`,
+    )
+
+    if (cache) {
+      this.logger.log('Cache hit')
+      return cache
+    }
+
+    const pagination = await paginate(query, this.categoriaRepository, {
+      sortableColumns: ['nombreCategoria'],
+      defaultSortBy: [['id', 'ASC']],
+      searchableColumns: ['nombreCategoria'],
+      filterableColumns: {
+        nombreCategoria: [FilterOperator.EQ, FilterSuffix.NOT],
+        isDeleted: [FilterOperator.EQ, FilterSuffix.NOT],
+      },
+    })
+
+    const res: PaginationResponse = {
+      data: (pagination.data ?? []).map((data) =>
+        this.categoriaMapper.mapResponse(data),
+      ),
+      meta: pagination.meta,
+      links: pagination.links,
+    }
+
+    await this.cacheManager.set(
+      `all_categories_paginated_${JSON.stringify(query)}`,
+      res,
+      60000,
+    )
+
+    return res
+  }
+
   async findAll() {
     const cache: Categoria[] = await this.cacheManager.get('all_categories')
     if (cache) {
@@ -58,7 +104,7 @@ export class CategoriaService {
     }
 
     const listCate = await this.categoriaRepository.find()
-    this.cacheManager.set('all_categories', listCate, 60)
+    this.cacheManager.set('all_categories', listCate, 60000)
     return listCate
   }
 
@@ -72,7 +118,7 @@ export class CategoriaService {
     if (!cateFind) {
       throw new NotFoundException(`Categoria con ID ${id} no encontrada`)
     }
-    await this.cacheManager.set(`category_${id}`, cateFind, 60)
+    await this.cacheManager.set(`category_${id}`, cateFind, 60000)
     return cateFind
   }
 
@@ -108,7 +154,7 @@ export class CategoriaService {
     return await this.categoriaRepository.save(cateRem)
   }
 
-  private onChange(type: NotificacionTipo, data: Categoria) {
+  onChange(type: NotificacionTipo, data: Categoria) {
     const dataToSend = this.categoriaMapper.mapResponse(data)
     const notification = new Notificacion<ResponseCategoriaDto>(
       'CATEGORIAS',

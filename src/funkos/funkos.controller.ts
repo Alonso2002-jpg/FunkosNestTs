@@ -11,7 +11,6 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -21,11 +20,11 @@ import { CreateFunkoDto } from './dto/create-funko.dto'
 import { UpdateFunkoDto } from './dto/update-funko.dto'
 import { FunkoExistsGuard } from './guards/funko-exists.guard'
 import { FunkosMapper } from './mapper/funkos.mapper'
-import { Request } from 'express'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { diskStorage } from 'multer'
 import { extname, parse } from 'path'
-import { CacheInterceptor } from '@nestjs/cache-manager'
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager'
+import { Paginate, PaginateQuery } from 'nestjs-paginate'
 
 @Controller('funkos')
 @UseInterceptors(CacheInterceptor)
@@ -46,11 +45,10 @@ export class FunkosController {
   }
 
   @Get()
-  async findAll() {
+  @CacheTTL(3)
+  async findAll(@Paginate() query: PaginateQuery) {
     this.logger.log('Consultando todos los Funkos')
-    return await this.funkosService
-      .findAll()
-      .then((fkList) => fkList.map((fk) => this.funkosMapper.mapResponse(fk)))
+    return await this.funkosService.findAllPag(query)
   }
 
   @UseGuards(FunkoExistsGuard)

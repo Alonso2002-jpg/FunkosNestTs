@@ -30,7 +30,7 @@ describe('FunkosController', () => {
 
   const category: Categoria = {
     id: '14c56c95-1cbf-4c65-a0c3-025899d2e2d1',
-    nombreCategoria: 'test',
+    nombreCategoria: 'TEST',
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -81,10 +81,18 @@ describe('FunkosController', () => {
       getRepositoryToken(Categoria),
     )
     notificationGateway = module.get<NotificationGateway>(NotificationGateway)
+  })
+  beforeEach(async () => {
     await cateRepository.save(category)
     await repository.save(funkoTest)
   })
 
+  afterEach(async () => {
+    await repository.query(`TRUNCATE TABLE funko RESTART IDENTITY CASCADE`)
+    await cateRepository.query(
+      `TRUNCATE TABLE category RESTART IDENTITY CASCADE`,
+    )
+  })
   afterAll(() => {
     postgresContainer.stop()
   })
@@ -94,10 +102,15 @@ describe('FunkosController', () => {
   })
 
   describe('findAll', () => {
-    it('should return an array of funkos response', async () => {
-      const funkos = await controller.findAll()
-      expect(funkos.length).toBe(1)
-      expect(funkos[0]).toBeInstanceOf(ResponseFunkoDto)
+    it('should return an array of funkos response paginated', async () => {
+      const paginateOptions = {
+        page: 1,
+        limit: 10,
+        path: 'funkos',
+      }
+      const funkos: any = await controller.findAll(paginateOptions)
+      expect(funkos.meta.itemsPerPage).toBe(10)
+      expect(funkos.meta.currentPage).toEqual(paginateOptions.page)
     })
   })
 
@@ -118,9 +131,9 @@ describe('FunkosController', () => {
   describe('create', () => {
     it('should create a funko', async () => {
       const createFunkoDto: CreateFunkoDto = {
-        name: 'test',
+        name: 'test2',
         price: 100,
-        category: 'test',
+        category: 'TEST',
         quantity: 10,
       }
       jest.spyOn(notificationGateway, 'sendMessage').mockReturnValue()
@@ -202,7 +215,7 @@ describe('FunkosController', () => {
       await repository.save(funkoTest)
       const mockFile = {} as Express.Multer.File
       jest.spyOn(notificationGateway, 'sendMessage').mockReturnValue()
-      const res = await controller.updateImg(2, mockFile)
+      const res = await controller.updateImg(1, mockFile)
       expect(res).toBeInstanceOf(ResponseFunkoDto)
     })
   })

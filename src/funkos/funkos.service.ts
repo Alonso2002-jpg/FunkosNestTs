@@ -22,6 +22,13 @@ import { ResponseFunkoDto } from './dto/response-funko.dto'
 import { NotificationGateway } from '../websockets/notification/notification.gateway'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
+import {
+  FilterOperator,
+  FilterSuffix,
+  paginate,
+  PaginateQuery,
+} from 'nestjs-paginate'
+import { hash } from 'typeorm/util/StringUtils'
 
 @Injectable()
 export class FunkosService {
@@ -45,6 +52,46 @@ export class FunkosService {
     return funkoReturn
   }
 
+  async findAllPag(query: PaginateQuery) {
+    const cache: Funko[] = await this.cacheManager.get(
+      `all_funks_page_${hash(JSON.stringify(query))}`,
+    )
+    if (cache) {
+      this.logger.log('Cache hit')
+      return cache
+    }
+    const queryBuilder = this.funkoRepository
+      .createQueryBuilder('funko')
+      .leftJoinAndSelect('funko.category', 'category')
+
+    const pagination = await paginate(query, queryBuilder, {
+      sortableColumns: ['name', 'price', 'quantity'],
+      defaultSortBy: [['id', 'ASC']],
+      searchableColumns: ['name', 'price', 'quantity'],
+      filterableColumns: {
+        name: [FilterOperator.EQ, FilterSuffix.NOT],
+        price: true,
+        quantity: true,
+        isDeleted: [FilterOperator.EQ, FilterSuffix.NOT],
+      },
+    })
+
+    const res = {
+      data: (pagination.data ?? []).map((data) =>
+        this.funkosMapper.mapResponse(data),
+      ),
+      meta: pagination.meta,
+      links: pagination.links,
+    }
+
+    await this.cacheManager.set(
+      `all_funks_page_${hash(JSON.stringify(query))}`,
+      res,
+      60000,
+    )
+
+    return res
+  }
   async findAll() {
     const cache: Funko[] = await this.cacheManager.get('all_funkos')
     if (cache) {
@@ -142,7 +189,7 @@ export class FunkosService {
     return funkoReturn
   }
 
-  private onChange(tipo: NotificacionTipo, data: Funko) {
+  public onChange(tipo: NotificacionTipo, data: Funko) {
     const dataToSend = this.funkosMapper.mapResponse(data)
     const notification = new Notificacion<ResponseFunkoDto>(
       'FUNKOS',

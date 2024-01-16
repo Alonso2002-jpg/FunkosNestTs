@@ -12,12 +12,14 @@ import { Cache } from 'cache-manager'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { NotificationGateway } from '../websockets/notification/notification.gateway'
 import { ResponseCategoriaDto } from './dto/response-categoria.dto'
+import { NotificacionTipo } from '../websockets/notification/model/notification.model'
+import { Paginated } from 'nestjs-paginate'
 
 describe('CategoriaService', () => {
   let service: CategoriaService
   let repository: Repository<Categoria>
   let funkRepository: Repository<Funko>
-  let notifitcationService: NotificationGateway
+  let notificationService: NotificationGateway
   let mapper: CategoriaMapper
   let cacheManager: Cache
 
@@ -57,7 +59,7 @@ describe('CategoriaService', () => {
 
     funkRepository = module.get<Repository<Funko>>(getRepositoryToken(Funko))
     mapper = module.get<CategoriaMapper>(CategoriaMapper)
-    notifitcationService = module.get<NotificationGateway>(NotificationGateway)
+    notificationService = module.get<NotificationGateway>(NotificationGateway)
     cacheManager = module.get<Cache>(CACHE_MANAGER)
   })
 
@@ -65,6 +67,59 @@ describe('CategoriaService', () => {
     expect(service).toBeDefined()
   })
 
+  describe('findAllPage', () => {
+    it('should return an array of categories paginated', async () => {
+      const paginateOption = {
+        page: 1,
+        limit: 10,
+        path: 'categorias',
+      }
+
+      const testCategories = {
+        data: [],
+        meta: {
+          itemsPerPage: 10,
+          totalItems: 1,
+          currentPage: 1,
+          totalPages: 1,
+        },
+        links: {
+          current: 'categorias?page=1&limit=10&sortBy=nombre:ASC',
+        },
+      } as Paginated<Categoria>
+
+      jest.spyOn(cacheManager, 'get').mockResolvedValue(Promise.resolve(null))
+      jest.spyOn(cacheManager, 'set').mockResolvedValue()
+
+      const mockQueryBuilder = {
+        take: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([testCategories, 1]),
+      }
+      jest
+        .spyOn(mapper, 'mapResponse')
+        .mockReturnValue(new ResponseCategoriaDto())
+      jest
+        .spyOn(repository, 'createQueryBuilder')
+        .mockReturnValue(mockQueryBuilder as any)
+
+      const result: any = await service.findAllPag(paginateOption)
+
+      // console.log(result)
+      expect(result.meta.itemsPerPage).toEqual(paginateOption.limit)
+      // Expect the result to have the correct currentPage
+      expect(result.meta.currentPage).toEqual(paginateOption.page)
+      // Expect the result to have the correct totalPages
+      expect(result.meta.totalPages).toEqual(1) // You may need to adjust this value based on your test case
+      // Expect the result to have the correct current link
+      expect(result.links.current).toEqual(
+        `categorias?page=${paginateOption.page}&limit=${paginateOption.limit}&sortBy=nombre:ASC`,
+      )
+      expect(cacheManager.get).toHaveBeenCalled()
+      expect(cacheManager.set).toHaveBeenCalled()
+    })
+  })
   describe('findAll', () => {
     it('should return an array of categories', async () => {
       const categories = [new Categoria(), new Categoria(), new Categoria()]
@@ -290,6 +345,15 @@ describe('CategoriaService', () => {
 
       expect(repository.findOneBy).toHaveBeenCalled()
       expect(repository.save).toHaveBeenCalled()
+    })
+  })
+
+  describe('onChange', () => {
+    it('should send a Category Notification', async () => {
+      jest.spyOn(notificationService, 'sendMessage').mockReturnValue()
+
+      service.onChange(NotificacionTipo.CREATE, new Categoria())
+      expect(notificationService.sendMessage).toHaveBeenCalled()
     })
   })
 })

@@ -27,7 +27,7 @@ describe('FunkosService', () => {
   }
   const category: Categoria = {
     id: '14c56c95-1cbf-4c65-a0c3-025899d2e2d1',
-    nombreCategoria: 'test2',
+    nombreCategoria: 'TEST2',
     isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -75,14 +75,23 @@ describe('FunkosService', () => {
     cateRepository = module.get<Repository<Categoria>>(
       getRepositoryToken(Categoria),
     )
-    await cateRepository.save(category)
-    await repository.save(funkoTest)
   })
 
   afterAll(async () => {
     await postgresContainer.stop()
   })
 
+  beforeEach(async () => {
+    await cateRepository.save(category)
+    await repository.save(funkoTest)
+  })
+
+  afterEach(async () => {
+    await repository.query(`TRUNCATE TABLE funko RESTART IDENTITY CASCADE`)
+    await cateRepository.query(
+      `TRUNCATE TABLE category RESTART IDENTITY CASCADE`,
+    )
+  })
   it('should be defined', () => {
     expect(service).toBeDefined()
   })
@@ -94,6 +103,28 @@ describe('FunkosService', () => {
       expect(funkos[0].category.nombreCategoria).toEqual(
         category.nombreCategoria,
       )
+    })
+
+    it('should return an array by cache', async () => {
+      await service.findAll()
+      const funkos = await service.findAll()
+
+      expect(funkos.length).toBe(1)
+      expect(funkos[0].category.nombreCategoria).toEqual(
+        category.nombreCategoria,
+      )
+    })
+
+    it('should return an array of funkos paginated', async () => {
+      const paginateOption = {
+        page: 1,
+        limit: 10,
+        path: 'funkos',
+      }
+      const funkos: any = await service.findAllPag(paginateOption)
+
+      expect(funkos.meta.itemsPerPage).toBe(10)
+      expect(funkos.meta.currentPage).toEqual(paginateOption.page)
     })
   })
 
@@ -119,6 +150,7 @@ describe('FunkosService', () => {
         category: 'test2',
         quantity: 10,
       }
+
       jest.spyOn(funkosMapper, 'mapFunko').mockReturnValue(funkoTest)
       const funko = await service.create(createFunkoDto)
       expect(funko.category.nombreCategoria).toEqual(category.nombreCategoria)
