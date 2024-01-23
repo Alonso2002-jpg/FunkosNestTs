@@ -13,7 +13,6 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Categoria } from '../categoria/entities/categoria.entity'
 import { Repository } from 'typeorm'
 import { StorageService } from '../storage/storage.service'
-import { Request } from 'express'
 import {
   Notificacion,
   NotificacionTipo,
