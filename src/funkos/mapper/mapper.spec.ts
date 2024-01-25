@@ -5,6 +5,7 @@ import { CreateFunkoDto } from '../dto/create-funko.dto'
 import { Funko } from '../entities/funko.entity'
 import { UpdateFunkoDto } from '../dto/update-funko.dto'
 import { ResponseFunkoDto } from '../dto/response-funko.dto'
+import { StorageService } from '../../storage/storage.service'
 
 describe('Mapper', () => {
   let provider: FunkosMapper
@@ -31,7 +32,7 @@ describe('Mapper', () => {
   }
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FunkosMapper],
+      providers: [FunkosMapper, StorageService],
     }).compile()
 
     provider = module.get<FunkosMapper>(FunkosMapper)

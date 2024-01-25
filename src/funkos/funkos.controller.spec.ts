@@ -1,100 +1,45 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { FunkosController } from './funkos.controller'
 import { FunkosService } from './funkos.service'
-import {
-  PostgreSqlContainer,
-  StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql'
-import { Funko } from './entities/funko.entity'
-import { Categoria } from '../categoria/entities/categoria.entity'
-import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm'
-import { FunkosMapper } from './mapper/funkos.mapper'
-import { ResponseFunkoDto } from './dto/response-funko.dto'
-import { Repository } from 'typeorm'
+import { NotFoundException } from '@nestjs/common'
 import { CreateFunkoDto } from './dto/create-funko.dto'
 import { UpdateFunkoDto } from './dto/update-funko.dto'
 import { CacheModule } from '@nestjs/cache-manager'
-import { StorageService } from '../storage/storage.service'
-import { NotificationGateway } from '../websockets/notification/notification.gateway'
+import { Paginated } from 'nestjs-paginate'
+import { ResponseFunkoDto } from './dto/response-funko.dto'
+import { Funko } from './entities/funko.entity'
+import { DeleteResult } from 'typeorm'
+import { FunkosMapper } from './mapper/funkos.mapper'
 
 describe('FunkosController', () => {
-  let postgresContainer: StartedPostgreSqlContainer
   let controller: FunkosController
-  let notificationGateway: NotificationGateway
-  let repository: Repository<Funko>
-  let cateRepository: Repository<Categoria>
+  let service: FunkosService
 
-  const notiMock = {
-    sendMessage: jest.fn(),
+  const funkosServiceMock = {
+    findAll: jest.fn(),
+    findAllPag: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+    updateImage: jest.fn(),
   }
 
-  const category: Categoria = {
-    id: '14c56c95-1cbf-4c65-a0c3-025899d2e2d1',
-    nombreCategoria: 'TEST',
-    isDeleted: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    funkos: [],
+  const funkosMapper = {
+    mapResponse: jest.fn(),
   }
-
-  const funkoTest: Funko = {
-    id: 1,
-    name: 'test',
-    price: 100,
-    category,
-    img: Funko.IMG_DEFAULT,
-    quantity: 10,
-    isDeleted: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-
-  beforeAll(async () => {
-    postgresContainer = await new PostgreSqlContainer().start()
+  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [
-        TypeOrmModule.forRoot({
-          type: 'postgres',
-          host: postgresContainer.getHost(),
-          port: postgresContainer.getPort(),
-          username: postgresContainer.getUsername(), // Nombre de usuario
-          password: postgresContainer.getPassword(), // Contraseña de usuario
-          database: postgresContainer.getDatabase(), // Nombre de la base de datos
-          entities: [Funko, Categoria], // Entidades de la base de datos (buscar archivos con extensión .entity.ts o .entity.js)
-          synchronize: true, // Sincronizar la base de datos
-        }),
-        TypeOrmModule.forFeature([Funko, Categoria]),
-        CacheModule.register(),
-      ],
+      imports: [CacheModule.register()],
       controllers: [FunkosController],
       providers: [
-        FunkosService,
-        FunkosMapper,
-        StorageService,
-        { provide: NotificationGateway, useValue: notiMock },
+        { provide: FunkosService, useValue: funkosServiceMock },
+        { provide: FunkosMapper, useValue: funkosMapper },
       ],
     }).compile()
 
     controller = module.get<FunkosController>(FunkosController)
-    repository = module.get<Repository<Funko>>(getRepositoryToken(Funko))
-    cateRepository = module.get<Repository<Categoria>>(
-      getRepositoryToken(Categoria),
-    )
-    notificationGateway = module.get<NotificationGateway>(NotificationGateway)
-  })
-  beforeEach(async () => {
-    await cateRepository.save(category)
-    await repository.save(funkoTest)
-  })
-
-  afterEach(async () => {
-    await repository.query(`TRUNCATE TABLE funko RESTART IDENTITY CASCADE`)
-    await cateRepository.query(
-      `TRUNCATE TABLE category RESTART IDENTITY CASCADE`,
-    )
-  })
-  afterAll(() => {
-    postgresContainer.stop()
+    service = module.get<FunkosService>(FunkosService)
   })
 
   it('should be defined', () => {
@@ -102,121 +47,113 @@ describe('FunkosController', () => {
   })
 
   describe('findAll', () => {
-    it('should return an array of funkos response paginated', async () => {
+    it('should return a response of all funks', async () => {
       const paginateOptions = {
         page: 1,
         limit: 10,
         path: 'funkos',
       }
-      const funkos: any = await controller.findAll(paginateOptions)
-      expect(funkos.meta.itemsPerPage).toBe(10)
-      expect(funkos.meta.currentPage).toEqual(paginateOptions.page)
+      const testFunkos = {
+        data: [],
+        meta: {
+          itemsPerPage: 10,
+          totalItems: 1,
+          currentPage: 1,
+          totalPages: 1,
+        },
+        links: {
+          current: 'funkos?page=1&limit=10&sortBy=nombre:ASC',
+        },
+      } as Paginated<ResponseFunkoDto>
+
+      jest.spyOn(service, 'findAllPag').mockResolvedValue(testFunkos)
+
+      const result: any = await controller.findAll(paginateOptions)
+      expect(result.meta.itemsPerPage).toEqual(paginateOptions.limit)
+      expect(result.meta.currentPage).toEqual(paginateOptions.page)
+      expect(result.meta.totalPages).toEqual(1)
+      expect(result.links.current).toEqual(
+        `funkos?page=${paginateOptions.page}&limit=${paginateOptions.limit}&sortBy=nombre:ASC`,
+      )
+      expect(service.findAllPag).toHaveBeenCalled()
     })
   })
 
   describe('findOne', () => {
-    it('should return a funko response', async () => {
-      const funko = await controller.findOne(1)
-      expect(funko).toBeInstanceOf(ResponseFunkoDto)
+    it('should return a response of a funk', async () => {
+      const expectedResult: Funko = new Funko()
+      jest.spyOn(funkosMapper, 'mapResponse').mockReturnValue(expectedResult)
+      jest.spyOn(service, 'findOne').mockResolvedValue(expectedResult)
+
+      const actualResult = await controller.findOne(1)
+      expect(actualResult).toEqual(expectedResult)
+      expect(service.findOne).toHaveBeenCalled()
     })
 
-    it('should throw an exception if funko does not exists', async () => {
-      await expect(() => controller.findOne(0)).rejects.toHaveProperty(
-        'message',
-        'Funko con ID 0 no encontrado',
-      )
+    it("should throw an error if funk doesn't exist", async () => {
+      jest.spyOn(service, 'findOne').mockRejectedValue(new NotFoundException())
+      await expect(controller.findOne(1)).rejects.toThrow(NotFoundException)
     })
   })
 
   describe('create', () => {
-    it('should create a funko', async () => {
-      const createFunkoDto: CreateFunkoDto = {
-        name: 'test2',
-        price: 100,
-        category: 'TEST',
-        quantity: 10,
-      }
-      jest.spyOn(notificationGateway, 'sendMessage').mockReturnValue()
-
-      const funko = await controller.create(createFunkoDto)
-      expect(funko.category).toEqual(category.nombreCategoria)
-      expect(funko.name).toEqual(createFunkoDto.name)
-    })
-
-    it('should throw a exception if the category does not exists', async () => {
+    it('should create a new funk', async () => {
       const createFunkoDto: CreateFunkoDto = {
         name: 'test',
         price: 100,
-        category: 'noTest',
         quantity: 10,
+        category: 'test',
       }
-      await expect(() =>
-        controller.create(createFunkoDto),
-      ).rejects.toHaveProperty(
-        'message',
-        'Categoria no encontrada con nombre noTest',
-      )
+      const expectedResult: Funko = new Funko()
+
+      jest.spyOn(funkosMapper, 'mapResponse').mockReturnValue(expectedResult)
+      jest.spyOn(service, 'create').mockResolvedValue(expectedResult)
+
+      const actualResult = await controller.create(createFunkoDto)
+      expect(actualResult).toEqual(expectedResult)
+      expect(service.create).toHaveBeenCalledWith(createFunkoDto)
+      expect(actualResult).toBeInstanceOf(Funko)
     })
   })
 
   describe('update', () => {
-    it('should update a funko', async () => {
+    it('should update a funk', async () => {
       const updateFunkoDto: UpdateFunkoDto = {
-        name: 'newTest',
+        name: 'test',
+        price: 100,
+        quantity: 10,
+        category: 'test',
       }
+      const expectedResult: Funko = new Funko()
 
-      const funko = await controller.update(1, updateFunkoDto)
+      jest.spyOn(funkosMapper, 'mapResponse').mockReturnValue(expectedResult)
+      jest.spyOn(service, 'update').mockResolvedValue(expectedResult)
 
-      expect(funko.category).toEqual(category.nombreCategoria)
-      expect(funko.name).toEqual(updateFunkoDto.name)
+      const actualResult = await controller.update(1, updateFunkoDto)
+      expect(actualResult).toEqual(expectedResult)
+      expect(service.update).toHaveBeenCalledWith(1, updateFunkoDto)
+      expect(actualResult).toBeInstanceOf(Funko)
     })
 
-    it('should throw an exception if funko does not exists', async () => {
-      const updateFunkoDto: UpdateFunkoDto = {
-        name: 'newTest',
-      }
-
-      await expect(() =>
-        controller.update(0, updateFunkoDto),
-      ).rejects.toHaveProperty('message', 'Funko con ID 0 no encontrado')
-    })
-
-    it('should throw an exception if the category does not exists', async () => {
-      const updateFunkoDto: UpdateFunkoDto = {
-        name: 'newTest',
-        category: 'noTest',
-      }
-
-      await expect(() =>
-        controller.update(1, updateFunkoDto),
-      ).rejects.toHaveProperty(
-        'message',
-        'Categoria no encontrada con nombre noTest',
-      )
+    it("should throw an error if funk doesn't exist", () => {
+      jest.spyOn(service, 'remove').mockRejectedValue(new NotFoundException())
+      expect(controller.remove(1)).rejects.toThrow(NotFoundException)
     })
   })
 
   describe('remove', () => {
-    it('should remove a funko', async () => {
-      const funko = await controller.remove(1)
-      expect(funko.affected).toBe(1)
+    it('should remove a funk', async () => {
+      const delResult = new DeleteResult()
+
+      jest.spyOn(service, 'remove').mockResolvedValue(delResult)
+
+      await controller.remove(1)
+      expect(service.remove).toHaveBeenCalledWith(1)
     })
 
-    it('should throw an exception if funko does not exists', async () => {
-      await expect(() => controller.remove(0)).rejects.toHaveProperty(
-        'message',
-        'Funko con ID 0 no encontrado',
-      )
-    })
-  })
-
-  describe('updateImage', () => {
-    it('should update a funk image', async () => {
-      await repository.save(funkoTest)
-      const mockFile = {} as Express.Multer.File
-      jest.spyOn(notificationGateway, 'sendMessage').mockReturnValue()
-      const res = await controller.updateImg(1, mockFile)
-      expect(res).toBeInstanceOf(ResponseFunkoDto)
+    it('should thrown an error if funk doesn`t exist', async () => {
+      jest.spyOn(service, 'remove').mockRejectedValue(new NotFoundException())
+      await expect(controller.remove(1)).rejects.toThrow(NotFoundException)
     })
   })
 })

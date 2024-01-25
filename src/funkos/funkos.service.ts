@@ -28,6 +28,7 @@ import {
   PaginateQuery,
 } from 'nestjs-paginate'
 import { hash } from 'typeorm/util/StringUtils'
+import { PaginationResponse } from '../pagination/pagination-response'
 
 @Injectable()
 export class FunkosService {
@@ -63,7 +64,7 @@ export class FunkosService {
       .createQueryBuilder('funko')
       .leftJoinAndSelect('funko.category', 'category')
 
-    const pagination = await paginate(query, queryBuilder, {
+    const pagination: PaginationResponse = await paginate(query, queryBuilder, {
       sortableColumns: ['name', 'price', 'quantity'],
       defaultSortBy: [['id', 'ASC']],
       searchableColumns: ['name', 'price', 'quantity'],
@@ -146,10 +147,12 @@ export class FunkosService {
 
   async findCategory(name: string) {
     const category = await this.categoriaRepository.findOneBy({
-      nombreCategoria: name.toUpperCase(),
+      nombreCategoria: name,
     })
     if (!category) {
-      throw new NotFoundException(`Categoria no encontrada con nombre ${name}`)
+      throw new BadRequestException(
+        `Categoria no encontrada con nombre ${name}`,
+      )
     }
     return category
   }
