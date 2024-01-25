@@ -14,6 +14,7 @@ import { NotificationGateway } from '../websockets/notification/notification.gat
 import { ResponseCategoriaDto } from './dto/response-categoria.dto'
 import { NotificacionTipo } from '../websockets/notification/model/notification.model'
 import { Paginated } from 'nestjs-paginate'
+import { PaginationResponse } from '../pagination/pagination-response'
 
 describe('CategoriaService', () => {
   let service: CategoriaService
@@ -75,7 +76,7 @@ describe('CategoriaService', () => {
         path: 'categorias',
       }
 
-      const testCategories = {
+      const testCategories: PaginationResponse = {
         data: [],
         meta: {
           itemsPerPage: 10,
@@ -84,7 +85,7 @@ describe('CategoriaService', () => {
           totalPages: 1,
         },
         links: {
-          current: 'categorias?page=1&limit=10&sortBy=nombre:ASC',
+          current: 'categorias?page=1&limit=10&sortBy=id:ASC',
         },
       } as Paginated<Categoria>
 
@@ -114,7 +115,7 @@ describe('CategoriaService', () => {
       expect(result.meta.totalPages).toEqual(1) // You may need to adjust this value based on your test case
       // Expect the result to have the correct current link
       expect(result.links.current).toEqual(
-        `categorias?page=${paginateOption.page}&limit=${paginateOption.limit}&sortBy=nombre:ASC`,
+        `categorias?page=${paginateOption.page}&limit=${paginateOption.limit}&sortBy=id:ASC`,
       )
       expect(cacheManager.get).toHaveBeenCalled()
       expect(cacheManager.set).toHaveBeenCalled()

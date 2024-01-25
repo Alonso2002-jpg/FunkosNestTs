@@ -80,9 +80,7 @@ export class CategoriaService {
     })
 
     const res: PaginationResponse = {
-      data: (pagination.data ?? []).map((data) =>
-        this.categoriaMapper.mapResponse(data),
-      ),
+      data: pagination.data ?? [],
       meta: pagination.meta,
       links: pagination.links,
     }

@@ -8,6 +8,8 @@ import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { CreateCategoriaDto } from './dto/create-categoria.dto'
 import { UpdateCategoriaDto } from './dto/update-categoria.dto'
 import { CacheModule } from '@nestjs/cache-manager'
+import { Paginated } from 'nestjs-paginate'
+import { PaginationResponse } from '../pagination/pagination-response'
 
 describe('CategoriaController', () => {
   let controller: CategoriaController
@@ -16,6 +18,7 @@ describe('CategoriaController', () => {
   const mcCateService = {
     create: jest.fn(),
     findAll: jest.fn(),
+    findAllPag: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
@@ -42,13 +45,29 @@ describe('CategoriaController', () => {
 
   describe('findAll', () => {
     it('should return an array of Categoria Response', async () => {
-      const categorias: Categoria[] = [new Categoria()]
-      jest.spyOn(service, 'findAll').mockResolvedValue(categorias)
+      const paginateOptions = {
+        page: 1,
+        limit: 10,
+        path: 'categorias',
+      }
+      const testCategorias: PaginationResponse = {
+        data: [],
+        meta: {
+          itemsPerPage: 10,
+          totalItems: 1,
+          currentPage: 1,
+          totalPages: 1,
+        },
+        links: {
+          current: 'categorias?page=1&limit=10&sortBy=nombre:ASC',
+        },
+      } as Paginated<ResponseCategoriaDto>
 
-      const result = await controller.findAll()
-      expect(result.length).toBe(1)
-      expect(result[0]).toBeInstanceOf(ResponseCategoriaDto)
-      expect(service.findAll).toHaveBeenCalled()
+      jest.spyOn(service, 'findAllPag').mockResolvedValue(testCategorias)
+
+      const result = await controller.findAll(paginateOptions)
+      expect(result).toEqual(testCategorias)
+      expect(service.findAllPag).toHaveBeenCalled()
     })
   })
 
