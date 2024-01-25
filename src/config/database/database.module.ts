@@ -37,10 +37,15 @@ export class DatabaseModule {}
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forRoot({
       name: 'mongo',
       type: 'mongodb',
-      url: `mongodb://admin:admin123@127.0.0.1:27017/funkos`,
+      url: `mongodb://${process.env.DATABASE_USER}:${
+        process.env.DATABASE_PASSWORD
+      }@${process.env.MONGO_HOST}:${process.env.MONGO_PORT || 27017}/${
+        process.env.MONGO_DATABASE
+      }`,
       entities: [Pedido],
       synchronize: process.env.NODE_ENV === 'dev',
       logging: process.env.NODE_ENV === 'dev' ? 'all' : false,

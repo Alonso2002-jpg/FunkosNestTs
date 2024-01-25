@@ -16,7 +16,11 @@ import { CorsConfigModule } from './config/cors/cors.module'
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot(
+      process.env.NODE_ENV === 'dev'
+        ? { envFilePath: '.env.dev' || '.env' }
+        : { envFilePath: '.env.prod' },
+    ),
     CorsConfigModule,
     DatabaseModule,
     MongoDbModule,

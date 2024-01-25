@@ -30,6 +30,7 @@ export class PedidosController {
 
   @Post()
   @HttpCode(201)
+  @Roles('ADMIN')
   @UseGuards(UsuarioExistsGuard)
   create(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidosService.create(createPedidoDto)
